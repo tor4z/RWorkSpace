@@ -1,0 +1,24 @@
+---
+title: "smoothing"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Smoothing
+
+  [video](https://www.youtube.com/watch?v=4YoNcRh65vg)
+
+## Smoothing using filter
+
+## Smoothing using loess
+
+## Smoothing using span
+
+## Predict with loess
+
+## Regression with loess
+
+## Smoothing with lm

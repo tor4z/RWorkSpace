@@ -1,0 +1,110 @@
+---
+title: "Time Series"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Intro 
+  [video](https://www.youtube.com/watch?v=QHsmAM6nktY)
+  
+### Data Format
+
+* 1-100   Normal
+* 101-200 Cyclic
+* 201-300 Increasing trend
+* 301-400 Decreasing trend
+* 401-500 Upward shift
+* 501-600 Downward shift
+
+  
+```{r library, echo=TRUE, warning=FALSE, message=FALSE}
+library(party)
+library(dtw)
+library(knitr)
+
+sc <- read.csv("./TS/synthetic_control.data", header = F, sep = " ")
+```
+
+```{r}
+set.seed(233)
+n <- 10
+s <- sample(1:100, n)
+idx <- c(s, 100 + s, 200 + s, 300 + s, 400 + s, 500 + s)
+sample2 <- t(sc[idx, ])
+# plot.ts(sample1, main = "")
+observeLabels <- rep(1:7, each = n)
+
+hc <- hclust(dist(sample2), method = "average")
+plot(hc, labels = observeLabels, main="")
+rect.hclust(hc, k = 6)
+```
+
+```{r Cut a Tree into Groups of Data}
+memb <- cutree(hc, k = 6)
+kable(table(observeLabels, memb), caption = "Cutree table")
+```
+
+## AirPassengers Analysis
+
+```{r AirPassengers Analysis}
+AP <- AirPassengers
+AP <- ts(AP, frequency = 12)
+AP.dec <- decompose(AP)
+
+plot(AP.dec)
+plot(AP.dec$figure, type = "l")
+# axis(1, at=1:12, labels = months(ISOdate(2011,1:12,1)), las = 2)
+
+```
+
+## Time Series Predict
+```{r Time series predict}
+acf(AP, xaxp = c(0, 20, 10))   # 0 ~ 20 
+AP.fit <- arima(AP, order = c(1, 0, 0), list(order = c(2, 1, 0), period = 12))
+AP.fore <- predict(AP.fit, n.ahead = 24)
+
+U <- AP.fore$pred + 2 * AP.fore$se
+L <- AP.fore$pred - 2 * AP.fore$se
+
+boxplot(AP ~ cycle(AP))
+ts.plot(AP, AP.fore$pred, U, L, col = c(1, 2, 4, 4), lty = c(1,1,2,2))
+tsdiag(AP.fit)                       # ARIMA diagnostic
+Box.test(AP.fit$residuals, lag = 1)  # Box–Pierce (and Ljung–Box) test 
+```
+
+## DTW
+```{r DTW}
+idx <- seq(1, 2*pi, len = 100)
+a <- sin(idx + runif(100)/ 10)
+b <- cos(idx)
+
+align <- dtw(a, b, step = asymmetricP1, keep = T)
+dtwPlotTwoWay(align)
+```
+
+## Unemployment ~ Inflation Analysis
+
+```{r}
+unrate   <- read.csv("./TS/UNRATE.csv")
+infla <- read.csv("./TS/CPIAUCSL.csv")
+
+unrate.ts <- ts(unrate$VALUE, start = c(1948, 1), freq = 12)
+infla.ts <- ts(infla$VALUE, start = c(1928, 1), freq = 12)
+
+plot(unrate.ts)
+# abline(reg = lm(unrate.ts ~ time(unrate.ts)))
+
+ts.plot(unrate.ts, infla.ts, col = c("blue", "red"))
+```
+
+## Model diagnose
+```{r}
+
+```
+
+
+
+

@@ -1,0 +1,9 @@
+---
+title: "dplyr"
+output: html_document
+---
+
+```{r results='hide'}
+100
+```
+

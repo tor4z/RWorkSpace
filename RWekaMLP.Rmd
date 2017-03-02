@@ -1,0 +1,45 @@
+---
+title: "TMDND"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+# init r
+# import required library
+library(caret)
+library(RWeka)
+library(rminer)
+library(knitr)
+
+set.seed(233)
+folds <- createFolds(1:nrow(iris), k = 3)
+MLP   <- make_Weka_classifier("weka/classifiers/functions/MultilayerPerceptron")
+```
+
+## R iris prediction
+
+the summary of iris
+
+```{r  results='asis'}
+for(i in 1:3) {
+  iris.train <- iris[-folds[[i]],]
+  iris.test  <- iris[folds[[i]],]
+  
+  MLP.mold <- MLP(Species ~ ., data = iris.train)
+  # MLP.eval <- evaluate_Weka_classifier(MLP.mold, newdata = iris.test)
+  MLP.pred <- predict(MLP.mold, iris.test)
+  MLP.res  <- mmetric(iris.test$Species, MLP.pred, c("MAE", "RMSE", 
+                      "MAPE", "RMSPE", "RRSE", "RAE", "COR", "R2"))
+  
+  ## output
+  #print(paste("RUN: ", i))
+  # print(summary(MLP.eval))
+  print(kable(table(iris.test$Species, MLP.pred)))
+}
+```
+
+

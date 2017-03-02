@@ -1,0 +1,221 @@
+---
+title: "Sentiment Analysis"
+output: pdf_document
+---
+
+## Require R packages
+
+```{r}
+# install.packages("tm")
+# install.packages("wordcloud")
+# install.packages("RWeka")
+# install.packages("SnowballC")
+# install.packages("caret")
+# install.packages("rminer")
+# install.packages("kernlab")
+# install.packages("rpart")
+```
+
+## Import repuire packages
+
+```{r}
+library(tm)        # For text mining
+library(wordcloud) # Fro generation pretty eord cloud
+library(RWeka)     # For all the classification and evaluation from Weka
+library(SnowballC) # For word stemming
+library(caret)     # For partition dataset
+library(rminer)    # For classification evaluation
+library(kernlab)   # For SVM classifier
+library(rpart)     # For classificatio, regression and survival trees
+```
+
+## Load data and Partition dataset
+
+```{r}
+movie.reviews <- read.csv("./SAN/labeledTrainData.tsv", header = T, stringsAsFactors = F, sep = "\t")
+movie.reviews <- movie.reviews[, -1]
+movie.reviews$label <- ifelse(movie.reviews$sentiment == 1, "pos", "neg")
+movie.reviews$label <- factor(movie.reviews$label)
+movie.reviews <- movie.reviews[, -1]
+# summary(movie.reviews)
+# prop.table(table(movie.reviews$label))
+
+# Data partition
+train.idx <- createDataPartition(movie.reviews$label, p = 0.5, list = F)
+movie.train <- movie.reviews[train.idx,]
+movie.test  <- movie.reviews[-train.idx, ]
+test.idx <- createDataPartition(movie.test$label, p = 0.5, list = F)
+movie.test1 <- movie.test[test.idx,]
+movie.test2 <- movie.test[-test.idx,]
+
+# Check data numbers of row
+# nrow(movie.train)
+# nrow(movie.test1)
+# nrow(movie.test2)
+```
+
+
+```{r}
+movie.corpus <- Corpus(VectorSource(movie.train$review))
+# movie.corpus <- Corpus(DataframeSource(as.matrix(movie.train$review)))
+# length(movie.corpus)
+
+# tolower cases
+movie.corpus <- tm_map(movie.corpus, content_transformer(removeNumbers))
+movie.corpus <- tm_map(movie.corpus, content_transformer(removePunctuation))
+movie.corpus <- tm_map(movie.corpus, content_transformer(stripWhitespace))
+movie.corpus <- tm_map(movie.corpus, content_transformer(tolower))
+
+movie.stopwords <- c(stopwords("english"), "one", "tow", "three",
+                     "film", "films", "movie", "movies", "make", 
+                     "get", "see", "watch", "just")
+movie.corpus <- tm_map(movie.corpus, removeWords, movie.stopwords)
+
+# Stem the words
+movie.stem <- tm_map(movie.corpus, stemDocument, language = "english")
+```
+```{r}
+# Trandform corpus to stem document matrix
+movie.matrix <- DocumentTermMatrix(movie.stem, control = list(removePunctuation = T, 
+                                   removeNumbers = T, stripWhitespace = T, tolower = T,
+                                   stopwords = T, stemming = T))
+# dim(movie.matrix)
+movie.matrix.rm <- removeSparseTerms(movie.matrix, 0.9)
+# dim(movie.matrix.rm)
+movie.matrix.sorted <- sort(colMeans(as.matrix(movie.matrix.rm)), decreasing = T)
+# movie.matrix.sorted[1:20]
+# barplot(movie.matrix.sorted[1:20], border = NA, las = 3, xlab = "top 20 words", ylab = "Frequency")
+
+movie.matrix.nz.sorted <- as.matrix(movie.matrix.sorted)
+is.na(movie.matrix.nz.sorted) <- movie.matrix.nz.sorted == 0
+movie.matrix.nz.sorted <- sort(colMeans(t(movie.matrix.nz.sorted), na.rm = T), decreasing = T)
+movie.matrix.nz.sorted[1:15]
+mean(movie.matrix.nz.sorted[1:15])
+barplot(movie.matrix.nz.sorted[1:15], border = NA, las = 3, xlab = "top 20 words", ylab = "Frequency")
+# dim(as.matrix(movie.matrix.nz.sorted))
+wordcloud(names(movie.matrix.nz.sorted[1:30]), movie.matrix.nz.sorted[1:30], scale = c(5, 1), 
+          colors = brewer.pal(8, "Dark2"))
+train.bag  <- findFreqTerms(movie.matrix.rm)
+```
+
+```{r}
+# Create test corpus
+# test1 
+test1.corpus <- Corpus(VectorSource(movie.test1$review))
+test1.bag <- DocumentTermMatrix(test1.corpus, control = list(removePunctuation = T, 
+                                   removeNumbers = T, stripWhitespace = T, tolower = T,
+                                   stopwords = T, stemming = T, dictionary = train.bag))
+test1.data <- data.frame(y = movie.test1$label, x = as.matrix(test1.bag))
+
+# test2
+test2.corpus <- Corpus(VectorSource(movie.test2$review))
+test2.bag <- DocumentTermMatrix(test2.corpus, control = list(removePunctuation = T, 
+                                   removeNumbers = T, stripWhitespace = T, tolower = T,
+                                   stopwords = T, stemming = T, dictionary = train.bag))
+test2.data <- data.frame(y = movie.test2$label, x = as.matrix(test2.bag))
+```
+
+
+```{r}
+# Create train data
+movie.freq.rm <- as.matrix(movie.matrix.rm)
+train.data <- data.frame(y = movie.train$label, x = movie.freq.rm)
+```
+
+```{r}
+# Build tree
+library(party)
+
+movie.ctree <- ctree(y ~ ., data = train.data, controls = ctree_control(maxdepth = 5))
+summary(movie.ctree)
+plot(movie.ctree)
+movie.c.pred1 <- predict(movie.ctree, newdata = test1.data)
+#table(test1.data$y, movie.c.pred1)
+
+#Evaluation
+confusionMatrix(movie.c.pred1, test1.data[, 1], 
+                dnn = c("Prediction", "True"))
+
+mmetric(movie.c.pred1, test1.data[,1], c("ACC", "TPR"))
+```
+
+```{r}
+# Build bayes model
+library(e1071)
+
+movie.bayes <- naiveBayes(y ~ ., data = train.data)
+summary(movie.bayes)
+movie.b.pred1 <- predict(movie.bayes, newdata = test1.data)
+confusionMatrix(movie.b.pred1, test1.data[, 1],
+                dnn = c("Prediction", "True"))
+mmetric(movie.b.pred1, test1.data[, 1], c("ACC", "TPR"))
+```
+
+```{r}
+# Build random forest
+library(randomForest)
+movie.rf <- randomForest(y ~ ., data = train.data)
+summary(movie.rf)
+movie.rf.pred1 <- predict(movie.rf, newdata = test1.data)
+confusionMatrix(movie.rf.pred1, test1.data[, 1],
+                dnn = c("Prediction", "True"))
+mmetric(movie.rf.pred1, test1.data[, 1], c("ACC", "TPR"))
+```
+
+
+# Key functions
+
+## Tokenization
+
+### VectorSource / DataframeSource
+
+  Turn text to vector
+  `?VectorSource`
+  Turn text to data frame
+  `DataframeSource`
+
+### Corpus
+
+  Turn words vector to corpus
+  `?Corpus`
+  
+### tm_map
+
+  `?tm_map`
+
+#### Use tm_map to remove stop words/punctuation/white space
+
+  * Use default stop words
+  * Create custom stop words
+  * Remove punctuation
+  * Remove white space
+  
+  ```
+    custom_stop_words <- c(stopword("english"), "other", "stop", "words")
+  ```
+  
+
+### tolower
+
+  Turn all the charaters to lower cases.
+
+### DocumentTermMatrix
+
+---
+
+# Step
+
+  1.  Create corpus
+  2.  Remove numbers value from corpus
+  3.  Transform all the characters to lower cases
+  4.  Remove stop words
+  5.  Remove punctuation
+  6.  Remove white space
+  7.  Stem the words in the corpus
+  8.  Transform corpus to document term matrix
+  9.  Remove sparse terms
+  10. Clean document data
+  11. Remove a few non-interesting words
+  12. Polt first several words using word cloud
+  13. Build tree, evaluate prediction
+  
