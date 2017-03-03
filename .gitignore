@@ -215,7 +215,7 @@ vignettes/*.pdf
 *.knit.md
 
 # custom
-.html
-.pdf
+*.html
+*.pdf
 figure/*
 bigdata/*
