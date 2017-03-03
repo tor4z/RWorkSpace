@@ -1,0 +1,20 @@
+---
+title: "ggplot2Train"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r, echo=FALSE}
+library(ggplot2)
+data("diamonds")
+
+set.seed(233)
+dsmall <- diamonds[sample(nrow(diamonds), 100),]
+```
+
+## qplot
+```{r}
+qplot(carat, price, data = dsmall)
+```
+
