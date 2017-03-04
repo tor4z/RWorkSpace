@@ -1,0 +1,50 @@
+---
+title: "Feature Engineering"
+output: html_document
+---
+
+## Intro
+
+    [video](https://www.youtube.com/watch?v=dTRDZBltCTg&index=1&list=PL_EsypEX4ZkQtex4G_z1FuY96FjVRsDCZ)
+
+## Import package and data
+
+```{r}
+library(fscaret)
+library(caret)
+
+titanic <- read.csv("./data/titanic.train.csv", sep = ",")
+```
+
+## Data clean
+```{r}
+titanic$Title <- ifelse(grepl("Mr", titanic$Name), "Mr", 
+                 ifelse(grepl("Mrs", titanic$Name), "Mrs",
+                 ifelse(grepl("Miss", titanic$Name), "Miss", "Nothing")))
+
+titanic$Age[is.na(titanic$Age)] <- median(titanic$Age)
+titanic$Title <- as.factor(titanic$Title)
+
+titanic <- titanic[, c("Pclass", "Age", "Sex", "Title", "Survived")]
+```
+
+## DummyVars
+```{r}
+titanic.dumy <- dummyVars(~., data = titanic, fullRank = F)
+titanic.dumy <- as.data.frame(predict(titanic.dumy, titanic))
+idx <- createDataPartition(titanic.dumy$Survived, 0.75, list = F, times = 1)
+titanic.train <- titanic.dumy[idx,]
+titanic.test  <- titanic.dumy[-idx,]
+```
+
+## fscaret
+```{r}
+#fs.models <- c("glm", "gbm", "treebag", "ridge", "lasso")
+fs.models <- c("glm")
+titanic.fs <- fscaret(titanic.train, titanic.test, Used.funcRegPred = fs.models,
+                      no.cores = 2, preprocessData = T, with.labels = T,
+                      supress.output = F, myTimeLimit = 40)
+
+titanic.fs$VarImp
+```
+
