@@ -102,7 +102,7 @@ p + geom_histogram(binwidth = 2, fill = "steelblue")
 
 # alt dataset 
 p <- ggplot(mtcars, aes(mpg, wt, colour = cyl)) + geom_point() # mapping colour
-p %+% transform(mtcars, mpg = mpg^2)1
+p %+% transform(mtcars, mpg = mpg^2)
 
 # update eas
 p <- ggplot(mtcars, aes(x = mpg, y = wt))
@@ -363,5 +363,100 @@ qplot(percwhite, percbelowpoverty, data = midwest,
 qplot(percbelowpoverty, data = midwest, binwidth = 1)
 qplot(percbelowpoverty, data = midwest, weight = poptotal,
       binwidth = 1) + ylab("Population")
+```
+
+## Scale
+```{r}
+(plot <- qplot(cty, hwy, data = mpg))
+plot + aes(x = drv)
+plot + aes(x = drv) + scale_x_discrete()
+
+(p <- qplot(sleep_total, sleep_cycle, data = msleep, colour = vore))
+p + scale_colour_hue()
+p + scale_colour_hue("What dose \nit eat?",
+    breaks = c("herbi", "carni", "omni", NA),           # mapping breaks 
+    labels = c("plants", "meat", "both", "don't know")) # and labels
+p + scale_colour_brewer(palette = "Set1")
+
+(p <- qplot(cty, hwy, data = mpg, colour = displ))
+p + scale_x_continuous("City mpg")
+p + xlab ("City mpg")
+p + ylab("Highway mpg")
+p + labs(x = "City mpg", y = "Heighway mpg", colour = "Displacement")
+p + xlab(expression(frac(miles, gallon)))
+
+(p <- qplot(cyl, wt, data = mtcars))
+p + scale_x_continuous(breaks = c(5.5, 6.5))
+p + scale_x_continuous(limits = c(5.5, 6.5))
+
+(p <- qplot(wt, cyl, data = mtcars, colour = cyl))
+p + scale_colour_gradient(breaks = c(5.5, 6.5))
+p + scale_colour_gradient(limits = c(5.5, 6.5))
+
+qplot(log10(carat), log10(price), data = diamonds)
+qplot(carat, price, data = diamonds) + 
+    scale_x_log10() +
+    scale_y_log10()
+
+# date scale
+library(scales)
+plot <- qplot(date, psavert, data = economics, geom = "line") + 
+    ylab("Personal savings rate") +
+    geom_hline(xintercept = 0, yintercept = 0, colour = "grey50")
+plot
+
+plot + scale_x_date(date_breaks = "10 years")
+plot + scale_x_date(
+    limits = as.Date(c("2004-01-01", "2005-01-01")),
+    date_labels = "%Y-%m-%d"
+)
+
+f2d <- with(faithful, MASS::kde2d(eruptions, waiting,
+                                  h = c(1, 10), n = 50))
+df <- with(f2d, cbind(expand.grid(x, y), as.vector(z)))
+names(df) <- c("eruptions", "waiting", "density")
+erup <- ggplot(df, aes(eruptions, waiting, fill = density)) +
+    geom_tile() +
+    scale_x_continuous(expand = c(0, 0)) +
+    scale_y_continuous(expand = c(0, 0))
+
+erup + scale_fill_gradient(limits = c(0, 0.04))
+erup + scale_fill_gradient(limits = c(0, 0.04),
+                           low = "white", high = "black")
+erup + scale_fill_gradient2(limits = c(-0.04, 0.04),
+                            midpoint = mean(df$density))
+
+library(vcd)
+library(colorspace)
+fill_grapn <- function(pal) {
+    scale_fill_gradientn(colours = pal(7),
+                        limits  = c(0, 0.04))
+}
+
+erup + fill_grapn(rainbow_hcl)
+erup + fill_grapn(diverge_hcl)
+erup + fill_grapn(heat_hcl)
+
+# man discrete scale
+colours <- c(carni = "red", "NA" = "orange", insecti = "yellow",
+             herbi = "green", omni = "blue")
+
+plot <- qplot(brainwt, bodywt, data = msleep, log = "xy")
+plot + aes(colour = vore) +
+    scale_colour_manual(values = c("red", "orange", "yellow", "green", "blue"))
+plot + aes(colour = vore) + scale_colour_manual(values = colours)
+plot + aes(shape = vore) + scale_shape_manual(values = c(1, 2, 6, 0, 23))
+
+huron <- data.frame(year = 1875:1972, level = LakeHuron)
+ggplot(huron, aes(year)) + 
+    geom_line(aes(y = level - 5, colour = "below")) +
+    geom_line(aes(y = level + 5, colour = "above"))
+
+ggplot(huron, aes(year)) + 
+    geom_line(aes(y = level - 5, colour = "below")) +
+    geom_line(aes(y = level + 5, colour = "above")) +
+    scale_colour_manual("Direction",
+                values = c("below" = "blue", "above" = "red"))
+
 ```
 
