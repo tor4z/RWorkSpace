@@ -3,7 +3,21 @@ title: "dplyr"
 output: html_document
 ---
 
-```{r results='hide'}
-100
+```{r}
+library(dplyr)
+library(tidyr)
+
+iris <- tbl_df(iris)
+```
+
+```{r}
+select(iris, one_of(c("Species", "Sepal.Width"))) 
+
+top_n(iris, 3, Sepal.Length)
+group_by(iris, Species)
+
+by_cyl <- group_by(mtcars, cyl)
+summarise(by_cyl, mean(disp), mean(hp))
+filter(by_cyl, disp == max(disp))
 ```
 
