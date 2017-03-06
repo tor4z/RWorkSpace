@@ -457,6 +457,273 @@ ggplot(huron, aes(year)) +
     geom_line(aes(y = level + 5, colour = "above")) +
     scale_colour_manual("Direction",
                 values = c("below" = "blue", "above" = "red"))
+```
+
+## Facet
+```{r}
+library(plyr)
+library(reshape2)
+
+mpg2 <- subset(mpg, cyl != 5 & drv %in% c("4", "f"))
+
+qplot(cty, hwy, data = mpg2) + facet_grid(drv ~ cyl)
+
+p <- qplot(displ, hwy, data = mpg2) + 
+    geom_smooth(method = "lm", se = F)
+p + facet_grid(cyl ~ drv)
+p + facet_grid(cyl ~ drv, margins = T)
+
+qplot(displ, hwy, data = mpg2) + 
+    geom_smooth(aes(colour = drv), method = "lm", se = F) + 
+    facet_grid(cyl ~ drv, margins = T)
+
+movies$decade <- round_any(movies$year, 10, floor)
+qplot(rating, ..density.., data = subset(movies, decade > 1890),
+      geom = "histogram", binwidth = 0.5) +
+    facet_wrap(~ decade, ncol = 6)
+
+p <- qplot(cty, hwy, data = mpg)
+p + facet_wrap(~ cyl, scales = "free_x")
+
+em <- melt(economics, id = "date")
+qplot(date, value, data = em, geom = "line", group = variable) + 
+    facet_grid(variable ~ ., scales = "free_y")
+
+# ---
+mpg3 <- within(mpg2, {
+    model <- reorder(model, cty)
+    manufacturer <- reorder(manufacturer, -cty)
+})
+models <- qplot(cty, model, data = mpg3)
+models
+models + facet_grid(manufacturer ~ ., scales = "free", space = "free") +
+    theme(strip.text.y = element_text())
+
+# facet var loss
+xmaj <- c(0.3, 0.5, 1, 3, 5)
+xmin <- as.vector(outer(1:10, 10^c(-1, 0)))
+ymaj <- c(500, 1000, 5000, 10000)
+ymin <- as.vector(outer(1:10, 10^c(2, 3, 4)))
+dplot <- ggplot(subset(diamonds, color %in% c("D", "E", "G", "J")),
+                aes(carat, price, colour = color)) +
+    scale_x_log10(breaks = xmaj, labels = xmaj, minor = xmin) +
+    scale_y_log10(breaks = ymaj, labels = ymaj, minor = ymin) +
+    scale_colour_hue(limits = levels(diamonds$color)) +
+    theme(legend.position = "none")
+
+dplot + geom_point()
+dplot + geom_point() + facet_grid(. ~ color)
+
+dplot + geom_smooth(method = "lm", se = F, fullrange = T)
+dplot + geom_smooth(method = "lm", se = F, fullrange = T) + 
+    facet_grid(. ~ color)
+
+qplot(color, data = diamonds, geom = "bar", fill = cut)
+ggplot(diamonds, aes(color, fill = cut)) + 
+    geom_bar(position = "dodge") +
+    facet_grid(. ~ color, scales = "free") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 8,
+                                     colour = "grey50"))
+
+
+mpg4 <- subset(mpg, manufacturer %in% c("audi", "volkswagen", "jeep"))
+mpg4$manufacturer <- as.character(mpg4$manufacturer)
+mpg4$model <- as.character(mpg4$model)
+
+base <- ggplot(mpg4, aes(fill = model)) + 
+    geom_bar(position = "dodge") 
+
+base + aes(x = model) + facet_grid(. ~ manufacturer, scales = "free_x", 
+                                   space = "free")
+base + aes(x = manufacturer)
+
+# continuous to dispersed
+mpg2$displ_ww <- cut_interval(mpg2$displ, length = 1)
+mpg2$displ_wn <- cut_interval(mpg2$displ, n = 6)
+mpg2$displ_nn <- cut_number(mpg2$displ, n = 6)
+
+plot <- qplot(cty, hwy, data = mpg2) + labs(x = NULL, y = NULL)
+plot + facet_wrap(~ displ_ww, nrow = 1)
+plot + facet_wrap(~ displ_wn, nrow = 1)
+plot + facet_wrap(~ displ_nn, nrow = 1)
+```
+
+## coord
+```{r}
+(p <- qplot(disp, wt, data = mtcars) + geom_smooth())
+p + scale_x_continuous(limits = c(325, 500))
+p + coord_cartesian(xlim = c(325, 500))
+
+(d <- ggplot(diamonds, aes(carat, price)) + 
+        stat_bin2d(bins = 25, colour = "grey70"))
+d + scale_x_continuous(limits = c(0, 2))
+d + coord_cartesian(xlim = c(0, 2))
+
+qplot(displ, cty, data =mpg) + geom_smooth()
+qplot(cty, displ, data = mpg) + geom_smooth()
+qplot(cty, displ, data = mpg) + geom_smooth() + coord_flip()
+
+# tran
+library(scales)
+qplot(carat, price, data = diamonds, log = "xy") + geom_smooth(method = "lm")
+qplot(carat, price, data = diamonds) + geom_smooth(method = "lm")
+last_plot() + coord_trans(x = exp_trans(10), y = exp_trans(10))
+
+# polar
+(pie <- ggplot(mtcars, aes(x = factor(1), fill = factor(cyl))) + 
+        geom_bar(width = 1)) 
+pie + coord_polar(theta = "y")
+pie + coord_polar()
+```
+## Theme
+```{r}
+hgram <- qplot(rating, data = movies, binwidth = 1)
+previous_them <- theme_set(theme_grey())
+hgram
+hgram + previous_them
+hgram <- hgram + labs(title = "This is a histogram")
+
+hgram + theme(plot.title = element_text(size = 20))
+hgram + theme(panel.grid.major = element_line(colour = "red"))
+hgram + theme(panel.grid.major = element_line(size = 2))
+hgram + theme(panel.grid.major = element_line(linetype = "dotted"))
+hgram + theme(axis.line = element_line())
+hgram + theme(axis.line = element_line(colour = "red"))
+hgram + theme(axis.line = element_line(size = 0.5, linetype = "dashed"))
+
+hgram + theme(plot.background = element_rect(fill = "grey80", colour = NA))
+hgram + theme(plot.background = element_rect(size = 2))
+hgram + theme(plot.background = element_rect(colour = "red"))
+hgram + theme(panel.background = element_rect())
+hgram + theme(panel.background = element_rect(colour = NA))
+hgram + theme(panel.background = element_rect(linetype = "dotted"))
+
+hgram
+last_plot() + theme(panel.grid.major = element_blank())
+last_plot() + theme(panel.grid.minor = element_blank())
+last_plot() + theme(panel.background = element_blank())
+last_plot() + theme(axis.title.x = element_blank(), axis.title.y = element_blank())
+last_plot() + theme(axis.line = element_blank())
+
+# ---
+old_theme <- theme_update(
+    plot.background = element_rect(fill = "#3366FF"),
+    panel.background = element_rect(fill = "#003DF5"),
+    axis.text.x = element_text(colour = "#CCFF33"),
+    axis.text.y = element_text(colour = "#CCFF33", hjust = 1),
+    axis.title.x = element_text(colour = "#CCFF33", face = "bold"),
+    axis.title.y = element_text(colour = "#CCFF33", face = "bold")
+)
+
+qplot(cty, hwy, data = mpg)
+theme_set(old_theme)
+qplot(cty, hwy, data = mpg)
+
+# scale
+p <- qplot(mpg, wt, data = mtcars, colour = factor(cyl))
+p
+scale_color_discrete <- scale_color_brewer
+p
+
+# geom stat 
+update_geom_defaults("point", aes(colour = "darkblue"))
+qplot(mpg, wt, data = mtcars)
+update_stat_defaults("bin", aes(y = ..density..))
+qplot(rating, data = movies, geom = "histogram", binwidth = 1)
+
+# save
+qplot(mpg, wt, data = mtcars)
+ggsave(file = "./images/mtcars.pdf")
+
+(a <- qplot(date, unemploy, data = economics, geom = "line"))
+(b <- qplot(uempmed, unemploy, data = economics) + geom_smooth(se = F))
+(c <- qplot(uempmed, unemploy, data = economics, geom = "path"))
+
+# sub geom
+library(grid)
+# define viewport
+vp1 <- viewport(width = 1, height = 1, x = 0.5, y = 0.5)
+vp2 <- viewport(width = 0.5, height = 0.5, x = 0.5, y = 0.5)
+vp3 <- viewport(width = unit(2, "cm"), height = unit(3, "cm"))
+vp4 <- viewport(x = 1, y = 1, just = c("top", "right"))
+vp4 <- viewport(x = 0, y = 0, just = c("bottom", "right"))
+
+pdf("./images/subplot-1.pdf", width = 4, height = 4)
+subvp <- viewport(width = 0.4, height = 0.4, x = 0.75, y = 0.35)
+b
+print(c, vp = subvp)
+dev.off()
+
+csmall <- c + 
+    theme_gray(9) +
+    labs(x = NULL, y = NULL) + 
+    theme(plot.margin = unit(rep(0, 4), "lines") )
+pdf("./images/subplot-2.pdf", width = 4, height = 4)
+subvp <- viewport(width = 0.4, height = 0.4, x = 0.75, y = 0.35)
+b
+print(csmall, vp = subvp)
+dev.off()
+
+# grid layout
+pdf("./images/subplot-3.pdf", width = 8, height = 6)
+grid.newpage()
+pushViewport(viewport(layout = grid.layout(2,2)))
+vplayout <- function(x, y) {
+    viewport(layout.pos.row = x, layout.pos.col = y)
+}
+print(a, vp = vplayout(1, 1:2))
+print(b, vp = vplayout(2, 1))
+print(c, vp = vplayout(2, 2))
+dev.off()
+```
+
+## Trick
+```{r}
+# save ggplot2 plot component to list
+xquiet <- scale_x_continuous("", breaks = NULL)
+yquiet <- scale_y_continuous("", breaks = NULL)
+quiet <- list(xquiet, yquiet)
+
+qplot(mpg, wt, data = mtcars) + quiet
+qplot(displ, cty, data = mpg) + quiet
+
+# create ggplot2 component
+library(splines)
+geom_ml <- function(formula = y~x) {
+    geom_smooth(formula = formula, se = F, method = "lm")
+}
+qplot(mpg, wt, data = mtcars) + geom_ml()
+qplot(mpg, wt, data = mtcars) + geom_ml(y ~ ns(x,3))
 
 ```
+
+## plot functional
+```{r}
+library(plyr)
+library(reshape2)
+
+range01 <- function(x) {
+    rng <- range(x, na.rm = T)
+    (x - rng[1])/ diff(rng)
+}
+
+pcp_data <- function(df) {
+    numeric <- laply(df, is.numeric)
+    df[numeric] <- colwise(range01)(df[numeric])
+    df$.row <- rownames(df)
+    dfm <- melt(df, id = c(".row", names(df)[!numeric]))
+    class(dfm) <- c("pcp", class(dfm))
+    dfm
+}
+
+pcp <- function(df, ...) {
+    df <- pcp_data(df)
+    ggplot(df, aes(variable, value)) + geom_line(aes(group = .row))
+}
+
+pcp(mpg) + aes(colour = drv)
+```
+
+
+
 
