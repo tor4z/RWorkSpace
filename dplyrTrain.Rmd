@@ -1,23 +1,167 @@
 ---
-title: "dplyr"
+title: "dplyr & tidyr"
 output: html_document
 ---
 
 ```{r}
 library(dplyr)
 library(tidyr)
+library(hflights)
 
+load("./data/teamnames.rda")
+dadmom <- foreign::read.dta("./data/dadmomw.dta")
+data(hflights)
 iris <- tbl_df(iris)
+hflights <- tbl_df(hflights)
+
+stocks <- data_frame(
+  time = as.Date('2009-01-01') + 0:9,
+  X = rnorm(10, 0, 1),
+  Y = rnorm(10, 0, 2),
+  Z = rnorm(10, 0, 4)
+)
 ```
 
+## Reshape
 ```{r}
-select(iris, one_of(c("Species", "Sepal.Width"))) 
+d2 <- dadmom %>%
+  gather(key, value, named:incm)
 
-top_n(iris, 3, Sepal.Length)
-group_by(iris, Species)
+d2
+
+d3 <- d2 %>%
+    separate(key, c("variable", "type"), -2)
+
+d3 
+
+# Spread row into columns
+d4 <- d3 %>% # Key   value
+    spread(variable, value, convert = TRUE)
+d4
+
+d4 %>%
+    unite("tname", c(type, name), sep = " ")
+
+# Separate
+df <- data.frame(x = c(NA, "a.b", "a.d", "b.c"))
+df %>% separate(x, c("A", "B"), sep = "[^[:alnum:]]+")
+
+arrange(mtcars, mpg)
+arrange(mtcars, desc(mpg))
+rename(mtcars, MPGS = mpg)
+```
+
+## Group
+```{r}
+iris %>%
+    group_by(Species)
 
 by_cyl <- group_by(mtcars, cyl)
 summarise(by_cyl, mean(disp), mean(hp))
 filter(by_cyl, disp == max(disp))
+```
+
+## Subset
+```{r}
+# Subset
+select(iris, one_of(c("Species", "Sepal.Width"))) 
+select(iris, contains("Sepal"))
+iris %>% 
+    select(matches(".W."))
+
+iris %>%
+    select(-Species)
+
+iris %>%
+    sample_frac(0.75, replace = T)
+
+iris %>% 
+    sample_n(20, replace = F)
+
+iris %>%
+    top_n(3, Sepal.Length) %>%
+    distinct(Sepal.Length, .keep_all = T)
+
+filter(by_cyl, disp == max(disp))
+```
+
+## Summarise
+```{r}
+iris %>%
+    summarise(avg = mean(Sepal.Length))
+
+iris %>%
+    select(-Species) %>%
+    summarise_each(funs(mean))
+
+# wt: (Optional) If omitted, will count the number of rows. If specified, will perform a "weighted" tally by summing the (non-missing) values of variable wt.
+iris %>%
+    count(Species, wt = Sepal.Length)
+
+1:10 %>%
+    first()
+1:10 %>%
+    nth(2)
+```
+
+## Make new veriables
+```{r}
+iris %>%
+    mutate(sepal = Sepal.Length + Sepal.Width)
+
+# Apply window function to each column.
+iris %>%
+    mutate_each(funs(min_rank))
+
+iris %>%
+    transmute(sepal = Sepal.Length + Sepal.Width, Species)
+
+# window function
+lag(1:10, 1)
+lead(1:10, 1)
+
+x <- c(5, 1, 3, 2, 2, NA)
+row_number(x)
+min_rank(x)
+
+x <- rnorm(1e2)
+x[between(x, -1, 1)]
+
+cumall(1:4)
+```
+
+## Combine data set
+```{r}
+a <- data.frame(x1 = c("A", "B", "C"),
+                x2 = 1:3)
+
+b <- data.frame(x1 = c("A", "B", "D"),
+                x2 = c(T, F, T))
+
+
+# a = tbl_df(a)
+# b = tbl_df(b)
+mtcars$model <- rownames(mtcars)
+first <- mtcars[1:11, ]
+second <- mtcars[10:20, ]
+
+left_join(a, b, by = "x1")
+right_join(a, b, by = "x1")
+inner_join(a, b, by = "x1")
+full_join(a, b, by = "x1")
+
+# All row match in b
+semi_join(a, b, by = "x1")
+# All row do not have match in b
+anti_join(a, b, by = "x1")
+
+intersect(first, second)
+union(first, second)
+# row than apper in first but not second
+setdiff(first, second)
+
+# Append second to first as new row
+bind_rows(first, second)
+bind_cols(first, second)
 ```
 
