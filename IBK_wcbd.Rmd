@@ -1,0 +1,173 @@
+---
+title: "IBK wcbd"
+output: html_document
+---
+
+## Target
+
+1. Cross-validation
+2. Use folds
+3. Use lapply
+4. randomfrest
+
+## Import package and dataset
+```{r}
+library(RWeka)  # For IBK KNN
+library(rminer) # For mmetric
+library(caret)  # For createDataPartition
+library(dplyr)
+library(tidyr)
+library(randomForest)
+
+insurance.origin <- read.csv("./data/insurance.csv", stringsAsFactors = T)
+wbcd.origin      <- read.csv("./data/wisc_bc_data.csv", stringsAsFactors = T)
+income.origin    <- read.csv("./data/adult.csv", stringsAsFactors = T)
+
+income.origin <- tbl_df(income.origin)
+wbcd.origin   <- tbl_df(wbcd.origin)
+insurance.origin  <- tbl_df(insurance.origin)
+```
+
+## wbcd with IBK
+```{r}
+set.seed(233)
+wbcd <- wbcd.origin %>% select(-id)
+
+round(prop.table(table(wbcd$diagnosis)) * 100, digits = 1)
+
+folds <- createFolds(1:nrow(wbcd), k = 4)
+ibk_result <- list()
+ibk_eva    <- list()
+ibk_result_totla <- array()
+
+for(i in 1:4) {
+    test.d  <- wbcd[folds[[i]],]
+    train.d <- wbcd[-folds[[i]],]
+    
+    train.d
+    mod <- IBk(diagnosis ~ ., data = train.d, control = Weka_control(K = 50, X =  T))
+    ibk_eva[[i]] <- evaluate_Weka_classifier(mod, test.d, numFolds = 0, 
+                                             complexity = F, seed = 1, class = T)
+    pred <- predict(mod, test.d)
+    ibk_result[[i]] <- mmetric(test.d$diagnosis, pred,
+                               c("ACC", "PRECISION", "TPR", "F1"))
+    
+    ibk_result_totla <- cbind(ibk_result_totla, ibk_result[[i]])
+}
+ibk_eva
+rowMeans(ibk_result_totla[, -1])
+```
+
+## wbcd with random forest
+```{r}
+set.seed(233)
+wbcd <- wbcd.origin %>% select(-id)
+
+ibk.folds           <- createFolds(1:nrow(wbcd), 4)
+ibk_rf_result       <- list()
+ibk_rf_total_result <- array()
+
+for(i in 1:4) {
+    test.d <- wbcd[ibk.folds[[i]],]
+    train.d <- wbcd[-ibk.folds[[i]],]
+    
+    rf.mod <- randomForest(diagnosis ~ ., data = train.d)
+    
+    pred <- predict(rf.mod, test.d)
+    ibk_rf_result[[i]] <- mmetric(test.d$diagnosis, pred, 
+                                  c("ACC", "PRECISION", "TPR", "F1"))
+    
+    ibk_rf_total_result <- cbind(ibk_rf_total_result, ibk_rf_result[[i]])
+}
+varImpPlot(rf.mod)
+rowMeans(ibk_rf_total_result[, -1])
+```
+
+## income with IBK
+```{r}
+set.seed(233)
+income <- income.origin %>% rename(x50k = X..50K)
+runs <- 3
+
+inc.folds <- createFolds(1:nrow(income), runs)
+inc.result <- list()
+inc.eva <- list()
+inc.result_total <- array()
+
+for(i in 1:runs) {
+    cat(paste("Running: ", i, "\n"))
+    test.d <- income[inc.folds[[i]],]
+    train.d <- income[-inc.folds[[i]],]
+    
+    ibk.mod <- IBk(x50k ~ ., data = train.d, control = Weka_control(K = 20, X = T))
+    
+    inc.eva[[i]] <- evaluate_Weka_classifier(ibk.mod, test.d, numFolds = 0, complexity = F, 
+                                             seed = 1, class = T)
+    pred    <- predict(ibk.mod, test.d)
+    inc.result[[i]] <- mmetric(test.d$x50k, pred, c("ACC", "PRECISION", "TPR", "F1"))
+    
+    inc.result_total <- cbind(inc.result_total, inc.result[[i]])
+}
+inc.eva
+rowMeans(inc.result_total[, -1])
+```
+
+
+## income with random forest
+```{r}
+set.seed(233)
+income <- income.origin %>% rename(x50k = X..50K)
+runs <- 4
+
+inc.folds <- createFolds(1:nrow(income), runs)
+inc.result <- list()
+inc.result_total <- array()
+
+for (i in 1:runs) {
+    cat(paste("Running: ", i, "\n"))
+    test.d <- income[inc.folds[[i]],]
+    train.d <- income[-inc.folds[[i]],]
+    
+    rf.mod <- randomForest(x50k ~ ., data = train.d)
+    pred <- predict(rf.mod, test.d)
+    
+    inc.result[[i]] <- mmetric(test.d$x50k, pred, c("ACC", "PRECISION", "TPR", "F1"))
+    inc.result_total <- cbind(inc.result_total, inc.result[[i]])
+}
+varImpPlot(rf.mod)
+rowMeans(inc.result_total[, -1])
+```
+
+## insurance with IBK (continuous)
+```{r}
+set.seed(233)
+insurance <- insurance.origin 
+runs <- 4
+
+ins.folds <- createFolds(1:nrow(insurance), runs)
+ins.result <- list()
+ins.eva    <- list()
+ins.result_total <- array()
+
+for(i in 1:runs) {
+    cat(paste("Running: ", i, "\n"))
+    test.d  <- insurance[ins.folds[[i]],]
+    train.d <- insurance[-ins.folds[[i]],]
+    
+    ibk.mod <- IBk(charges ~ ., data = train.d, control = Weka_control(K = 20, X = T))
+    pred <- predict(ibk.mod, test.d)
+    
+    ins.eva[[i]] <- evaluate_Weka_classifier(ibk.mod, test.d, numFolds = 0, complexity = F,
+                                             seed = 1, class = T)
+    ins.result[[i]] <- mmetric(test.d$charges, pred, c("MAE", "RMSE", "MAPE", "RMSPE",
+                                                       "RRSE", "RAE", "COR", "R2"))
+    ins.result_total <- cbind(ins.result_total, ins.result[[i]])
+}
+
+ins.eva
+rowMeans(ins.result_total[, -1])
+```
+
+
+
+
