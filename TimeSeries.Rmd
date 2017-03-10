@@ -106,5 +106,46 @@ ts.plot(unrate.ts, infla.ts, col = c("blue", "red"))
 ```
 
 
+## TS regression
+```{r}
+library(TSA)
+data(airmiles)
+
+plot(log(airmiles), ylab= 'Log(airmiles)', xlab = 'Year', main = '')
+
+acf(diff(diff(window(log(airmiles), end = c(2001,8)), 12)), lag.max = 48, main = '')
+
+air.m1 = arimax(log(airmiles), 
+                order    = c(0,1,1),
+                seasonal = list(order = c(0,1,1), period = 12),
+                transfer = list(c(0,0), c(1,0)),
+                xtransf  = data.frame(I911=1*(seq(airmiles)==69),
+                                      I911=1*(seq(airmiles)==69)),
+                xreg     = data.frame(Dec96=1*(seq(airmiles)==12),
+                                      Jan97=1*(seq(airmiles)==13),
+                                      Dec02=1*(seq(airmiles)==84)),
+                method='ML')
+
+air.m1
+plot(log(airmiles), ylab= 'Log(airmiles)')
+points(fitted(air.m1))
+
+# 911 effection
+p911 <- 1 * (seq(airmiles) == 69)
+tt <- ts(p911 * (-0.0949) + 
+             filter(p911, filter = .8139, method = "recursive", side = 1) * (-0.2715), 
+        frequency = 12,
+        start     = 1996)
+
+plot(tt , ylab = "9/11 Effects", type = "h")
+abline(h = 10)
+```
+
+## ARIMA Simulate
+```{r}
+ts.sim <- arima.sim(list(order = c(1,1,0), ar = 0.7), n = 200)
+ts.plot(ts.sim)
+```
+
 
 
