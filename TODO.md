@@ -1,3 +1,0 @@
-# TODO List
-
-- [x] bootstrap
