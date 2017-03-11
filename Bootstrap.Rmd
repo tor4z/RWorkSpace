@@ -1,0 +1,137 @@
+---
+title: "Bootstrap"
+output: html_document
+---
+
+## Target
+
+* What is Bootstrap
+* Use boot pacakge
+
+#### Key ideas
+
+Treat the sample as if it were the population
+
+#### What is good for
+
+* Calculating standard error
+* Forming confidence intervals
+* Performaing hypothesis test
+* Improving predictors
+
+## Notes
+
+* Can be useful for complicated statics
+* Be careful near the boundaries
+* Be careful with non0-linear function
+
+## Import package
+```{r}
+library(ggplot2)
+library(boot)
+```
+
+## Bootstrap Example
+```{r}
+set.seed(333)
+x          <- rnorm(30)
+n          <- 30000
+bootMean   <- rep(NA, n)
+sampleMean <- rep(NA, n)
+
+for(i in 1:n) {bootMean[i]   <- mean(sample(x, replace = T))}
+for(i in 1:n) {sampleMean[i] <- mean(rnorm(30))}
+
+df <- data.frame(b = bootMean,
+                 s = sampleMean)
+
+ggplot(df) + 
+    geom_density(aes(x = b)) +
+    geom_density(aes(x = s), colour = "red")
+```
+
+
+## Example with boot package
+```{r}
+set.seed(333)
+n <- 10000
+sampleMean <- rep(NA, n)
+
+for(i in 1:n) {sampleMean[i] <- mean(rnorm(30))}
+meanFunc <- function(x, i) {mean(x[i])}
+bootMean <- boot(x, meanFunc, n)
+
+bootMean
+
+df <- data.frame(b = bootMean$t,
+                 s = sampleMean)
+
+ggplot(df) + 
+    geom_density(aes(x = b)) +
+    geom_density(aes(x = s), colour = "red")
+```
+
+## Nuclear costs
+```{r}
+# normal
+data("nuclear")
+
+nuke.lm <- lm(log(cost) ~ date, data = nuclear)
+plot(nuclear$date, log(nuclear$cost), pch = 20)
+abline(nuke.lm, col = "red", lwd = 3)
+
+# bootstrap
+bs <- function(data, indices, formula) {
+    d   <- data[indices,]
+    fit <- lm(formula = formula, data = d)
+    return(coef(fit))
+}
+
+result <- boot(data = nuclear, statistic = bs, R = 10000, 
+               formula = log(cost) ~ date)
+plot(density(result$t[,2]), col = "red", lwd = 3)
+lines(rep(nuke.lm$coefficients[2], 10), seq(0, 8, length = 10),
+      col = "blue", lwd = 3)
+
+# Bootstrap confidence interval
+boot.ci(result)
+```
+
+## Bootstrapping from a model (hypothesis test)
+```{r}
+nuke.lm <- lm(log(cost) ~ date, data = nuclear)
+resid <- rstudent(nuke.lm)
+fit0 <- fitted(lm(log(cost) ~ 1, data = nuclear))
+newNuc <- cbind(nuclear, resid = resid, fit0 = fit0)
+
+bs <- function(data, indices) {
+    return(coef(glm(data$fit0 + data$resid[indices] ~ data$date, 
+                    data = data)))
+}
+
+result <- boot(data = newNuc, statistic = bs, R = 1000)
+plot(density(result$t[,2]), lwd = 2, col = "blue")
+lines(rep(coef(nuke.lm)[2], 10), seq(0, 3, length = 10), 
+      col = "red", lwd = 3)
+```
+
+## Bootstrapping non-linear statistics (median)
+```{r}
+set.seed(555)
+n <- 1000
+x <- rnorm(30)
+sampleMed <- rep(NA, n)
+
+for(i in 1:n) {
+    sampleMed[i] <- median(rnorm(30))
+}
+
+medFunc <- function(x, i) {
+    median(x[i])
+}
+
+bootMed <- boot(x, medFunc, n)
+plot(density(bootMed$t), col = "red", lwd = 3)
+lines(density(sampleMed), lwd = 3)
+```
+
