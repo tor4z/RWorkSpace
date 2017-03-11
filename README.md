@@ -1,3 +1,4 @@
 # TODO
 
-- [x] bootstrap
+- [x] Bootstrap
+- [ ] Linear Algebra basic cal

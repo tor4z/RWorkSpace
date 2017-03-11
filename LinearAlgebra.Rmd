@@ -1,0 +1,17 @@
+---
+title: "Linear Algebra"
+output: html_document
+---
+
+## Eigenvalues and eigenvectors
+```{r}
+set.seed(233)
+m <- matrix(sample(1:10, 9), nrow = 3, ncol = 3)
+ev <- eigen(m)
+```
+
+## Matrix Diagonals
+```{r}
+diag(9,3,3)
+```
+
