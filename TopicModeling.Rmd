@@ -3,3 +3,4 @@ title: "Topic modeling"
 output: html_document
 ---
 
+[video](https://www.youtube.com/watch?v=dibIduoz-X0)
