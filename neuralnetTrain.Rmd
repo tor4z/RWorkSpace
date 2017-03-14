@@ -1,0 +1,41 @@
+---
+title: "neuralnet"
+output: html_document
+---
+
+## Import pacakge
+```{r}
+library(neuralnet)
+```
+
+## Basic Uage
+```{r}
+data(infert, package="datasets")
+print(net.infert <- neuralnet(case~parity+induced+spontaneous,
+                              infert, err.fct="ce", linear.output=FALSE))
+
+confidence.interval(net.infert)
+plot(net.infert, rep="best")
+
+# Plot method for generalized weights
+gwplot(net.infert, selected.covariate="parity")
+gwplot(net.infert, selected.covariate="induced")
+gwplot(net.infert, selected.covariate="spontaneous")
+```
+
+
+```{r}
+Var1 <- rpois(100,0.5)
+Var2 <- rbinom(100,2,0.6)
+Var3 <- rbinom(100,1,0.5)
+SUM <- as.integer(abs(Var1+Var2+Var3+(rnorm(100))))
+sum.data <- data.frame(Var1+Var2+Var3, SUM)
+
+print(net.sum <- neuralnet( SUM~Var1+Var2+Var3, sum.data, hidden=1,
+                            act.fct="tanh"))
+
+main <- glm(SUM~Var1+Var2+Var3, sum.data, family=poisson())
+full <- glm(SUM~Var1*Var2*Var3, sum.data, family=poisson())
+prediction(net.sum, list.glm=list(main=main, full=full))
+```
+
