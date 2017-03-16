@@ -19,7 +19,7 @@ select(airline,Easy_Reservation:Recommend)%>%
   cor()%>%
   # 用corrplot()绘制相关图
   # 选项order="hclust"按照变量的相似度，基于系统聚类的结果对行列进行重新排列
-  corrplot(,order="hclust")
+  corrplot(. ,order="hclust")
 #######-----------------------------------------------
 # 主成分分析
 airline.pc<-select(airline,Easy_Reservation:Recommend)%>%
@@ -27,10 +27,10 @@ airline.pc<-select(airline,Easy_Reservation:Recommend)%>%
 summary(airline.pc)
 
 # 主成分分析陡坡图
-plot(airline.pc,type="l",family ="Songti SC",main="PCA陡坡图")
+plot(airline.pc,type="l",main="PCA陡坡图")
 
 # PCA双标图
-biplot(airline.pc,family ="Songti SC",main="PCA双标图",cex=c(0.5,1),xlim=c(-0.06,0.04))
+biplot(airline.pc,main="PCA双标图",cex=c(0.5,1),xlim=c(-0.06,0.04))
 
 #######-----------------------------------------------
 # 我们可以用之前介绍的`dplyr`包中的各种函数，以及使用之前讲到的管道操作`%>%`让代码更易读：
@@ -47,7 +47,7 @@ airline.mean<-select(airline,-ID)%>%
 # 聚合后PCA结果双标图
 airline.mean.pc<-select(airline.mean,Easy_Reservation:Recommend)%>%
   prcomp()
-biplot(airline.mean.pc,family ="Songti SC",main="聚合后PCA结果双标图",
+biplot(airline.mean.pc,main="聚合后PCA结果双标图",
        cex=0.7, expand=2,xlim=c(-0.8, 1),ylim=c(-0.7,0.8))
 
 #######-----------------------------------------------
@@ -57,8 +57,7 @@ airline.mean<-select(airline.mean,-Airline)
 # 绘制热图
 heatmap.2(as.matrix(airline.mean),
           col=brewer.pal(9,"YlGn"),trace="none",key=FALSE,dend="none",cexCol=0.6,cexRow =1)
-title(family ="Songti SC",
-      main="航空公司问卷调查均值热图")
+title(main="航空公司问卷调查均值热图")
 
 # 因子分析
 library(GPArotation)
@@ -71,8 +70,7 @@ library(RColorBrewer)
 # 绘制热图
 heatmap.2(airline.fa$loadings,
           col=brewer.pal(9,"YlGn"),trace="none",key=FALSE,dend="none",cexCol=0.6,cexRow =1)
-title(family ="Songti SC",
-      main="航空公司满意度因子载荷")
+title(main="航空公司满意度因子载荷")
 
 # 因子得分
 airline.fa<-airline%>%
@@ -95,5 +93,4 @@ fa.score.mean<-select(fa.score.mean,-Airline)
 
 heatmap.2(as.matrix(fa.score.mean),
           col=brewer.pal(9,"YlGn"),trace="none",key=FALSE,dend="none",cexCol=0.6,cexRow =1)
-title(family ="Songti SC",
-      main="航空公司满意度平均因子分值")
+title(main="航空公司满意度平均因子分值")
