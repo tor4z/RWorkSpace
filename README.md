@@ -21,4 +21,4 @@
 - [ ] Text mining(coreNLP, tm， openNLP)
 - [ ] p-value
 - [ ] Psychonality and Personal Resaerch (psych)
-- [ ] lm and update
+- [X] lm and update
