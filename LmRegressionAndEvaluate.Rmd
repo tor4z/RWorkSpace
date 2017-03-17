@@ -1,0 +1,224 @@
+---
+title: "Lm Regression And Evaluate"
+output: html_document
+---
+
+## Target 
+
+* Lm regression
+* Model Transform
+* Choose best model
+* Model compare (anova, AIC)
+* Model Update
+* Stepwise modeling
+* Model evaluate
+* Cross val
+
+## Import package and data
+```{r}
+library(MASS)      # For stepAIC
+library(leaps)     # For regsubsets
+library(car)       # For subsets, scatterplotMatrix, crPlots, 
+                   #     qqPlot, durbinWatsonTest, vif
+library(bootstrap) # For crossval
+library(effects)   # For effect
+library(gvlma)     # For gvlma
+library(dplyr)
+
+data <- as.data.frame(state.x77) %>%
+    select(Murder, Population, Illiteracy, Income, Frost)
+```
+
+## Multicomponent regression
+```{r}
+scatterplotMatrix(data, spread = F, lty.smooth = 2, main = "Scatter Plot Matrix")
+
+data.fit   <- lm(Murder ~ Population + Illiteracy + Income + Frost, data = data)
+summary(data.fit)
+
+# Basic eva
+confint(data.fit)
+par(mfrow = c(2, 2))
+plot(data.fit)
+
+# Advance eva
+qqPlot(data.fit, labels = row.names(data), id.method = "identify", 
+       simulate = T, main = "Q-Q Plot")
+
+# Durbin-Watson
+durbinWatsonTest(data.fit)
+# lag Autocorrelation D-W Statistic p-value
+#   1      -0.2006929      2.317691   0.244
+
+# Component plus residual plot
+crPlots(data.fit)
+# Population residual not a linear model
+
+# To justify is residual that are constent
+ncvTest(data.fit)
+# Non-constant Variance Score Test 
+# Variance formula: ~ fitted.values 
+# Chisquare = 1.746514    Df = 1     p = 0.1863156
+
+spreadLevelPlot(data.fit)
+# Suggested power transformation:  1.209626 
+data.fit2   <- lm(Murder^1.2 ~ Population + Illiteracy + Income + Frost, data = data)
+summary(data.fit2)
+spreadLevelPlot(data.fit2)
+# Suggested power transformation:  1.034649
+qqPlot(data.fit2)
+
+# General eva
+gvmodel <- gvlma(data.fit)
+summary(gvmodel)
+#                     Value p-value                Decision
+# Global Stat        2.7728  0.5965 Assumptions acceptable.
+# Skewness           1.5374  0.2150 Assumptions acceptable.
+# Kurtosis           0.6376  0.4246 Assumptions acceptable.
+# Link Function      0.1154  0.7341 Assumptions acceptable.
+# Heteroscedasticity 0.4824  0.4873 Assumptions acceptable.
+
+# Multicollinearity  R1P181
+# Variace inflaction factor
+vif(data.fit)
+sqrt(vif(data.fit)) > 2 # is Multicollinearity
+# Population Illiteracy     Income      Frost 
+#      FALSE      FALSE      FALSE      FALSE
+
+#-------------------------------------
+mtcars.fit <- lm(mpg ~ hp + wt + hp:wt, data = mtcars)
+summary(mtcars.fit)
+
+# Basic eva
+ef <- effect("hp:wt", mtcars.fit, xlevels = list(wt = c(2.2, 3.2, 4.2)),
+             multiline = T)
+# With the wt raised, interaction between hp and mpg desc
+plot(ef)
+
+#-------------------------------------
+# R1P172
+women.fit1 <- lm(weight ~ height, data = women)
+women.fit2 <- lm(weight ~ height + I(height^2), data = women)
+
+# Basic eva
+par(mfrow = c(2, 2))
+plot(women.fit1)
+plot(women.fit2)
+```
+
+## Abnormal obs (R1P182)
+```{r}
+# outlier
+data.fit   <- lm(Murder ~ Population + Illiteracy + Income + Frost, data = data)
+outlierTest(data.fit)
+
+# hat statistic
+hat.plot <- function(fit) {
+    p <- length(coefficients(fit))
+    n <- length(fitted(fit))
+    
+    plot(hatvalues(fit), main = "Index plot of hat values")
+    abline(h = c(2, 3) * p/n, col = "red", lty = 2)
+    identify(1:n, hatvalues(fit), names(hatvalues(fit)))
+}
+hat.plot(data.fit)
+
+#----------influence--------
+# Cook's D value/plot
+cutoff <- 4/(nrow(data)- length(data.fit$coefficients) - 1)
+plot(data.fit, which = 4, cook.levels = cutoff)
+abline(h = cutoff, lty = 2, col = "red")
+
+# Added-Variable plot
+avPlots(data.fit, ask = F, onepage = T, id.method = "identify")
+
+# Influence plot
+influencePlot(data.fit, id.method = "identify", main = "Influence plot",
+              sub = "Circle size is proportional to cook's distance")
+# y > +2 or y < -2 mean outlier
+# x > 0.2 or x > 0.3 mean height leverage score
+# Circle size is proportional to cook's distance
+```
+
+## Improve solution
+
+### Remove obs
+
+1. Remove outlier
+2. Remove strong influent obs
+3. Fit againt
+4. Repeat
+
+### Variable transform
+
+powerTransform
+
+```{r}
+# Variable transform
+library(car)
+summary(powerTransform(data$Murder))
+boxTidwell(Murder ~ Population + Illiteracy, data = data)
+```
+
+## Select the best model
+```{r}
+fit1 <- lm(Murder ~ Population + Illiteracy + Income + Frost, data = data)
+fit2 <- lm(Murder ~ Population + Illiteracy, data = data)
+
+anova(fit1, fit2)
+# Analysis of Variance Table
+# 
+# Model 1: Murder ~ Population + Illiteracy + Income + Frost
+# Model 2: Murder ~ Population + Illiteracy
+#   Res.Df    RSS Df Sum of Sq      F Pr(>F)
+# 1     45 289.17                           
+# 2     47 289.25 -2 -0.078505 0.0061 0.9939
+
+# Akaike Information Criterion
+# AIC lower is better
+AIC(fit1, fit2)
+#      df      AIC
+# fit1  6 241.6429
+# fit2  4 237.6565
+```
+
+## Variable select
+```{r}
+library(MASS)
+fit1 <- lm(Murder ~ Population + Illiteracy + Income + Frost, data = data)
+stepAIC(fit1, direction = "backward")
+
+library(leaps)
+Leaps <- regsubsets(Murder ~ Population + Illiteracy + Income + Frost, data = data)
+plot(Leaps, scale = "adjr2")
+
+library(car)
+# Close to the red line is better
+subsets(Leaps, statistic = "cp", main = "CP plot for all subset regression")
+abline(1, 1, lty = 2, col ="red")
+```
+
+## Relative importance
+```{r}
+# coef larger is more important
+zdata <- as.data.frame(scale(data))
+zfit <- lm(Murder ~ Population + Illiteracy + Income + Frost, data = zdata)
+coef(zfit)
+```
+
+## lm and update
+```{r}
+weight = rnorm(100, 50, 5)
+height = weight * 3.5 + rnorm(100, 5, 2)
+
+dat1 <- data.frame(height = height, weight = weight)
+lm1 <- lm(height ~ weight, data=dat1)
+coef(lm1)
+dat2 <- data.frame(height, weight=2*weight)
+lm2 <- update(lm1,data=dat2)
+coef(lm2)
+
+plot(height, weight)
+```
+
+
