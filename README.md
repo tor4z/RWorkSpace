@@ -18,7 +18,7 @@
 - [ ] nearZeroVar
 - [ ] class.ind and dummyVars
 - [ ] bookdown
-- [ ] Text mining(coreNLP, tm)
+- [ ] Text mining(coreNLP, tm， openNLP)
 - [ ] p-value
 - [ ] Psychonality and Personal Resaerch (psych)
 - [ ] lm and update
