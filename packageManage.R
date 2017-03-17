@@ -2,6 +2,7 @@ packagesFile = "./data/packages.RData"
 
 packages.save <- function() {
     packages <- as.data.frame(installed.packages())
+    packages$LibPath <- NULL
     save(packages, file = packagesFile)
 }
 
